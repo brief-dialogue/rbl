@@ -41,31 +41,34 @@ function checkGreet(msg) {
         document.getElementById("greeting").innerText = "true";
 }
 
+let ws = new WebSocket("ws://localhost:8000/client_chat");
+ws.onopen = ()=>{console.log("socket connected  ")}
+ws.onmessage = (event)=>{
+    recivedData = JSON.parse(event.data) 
+    if(!sessionStorage.getItem("uuid")){
+        let uuid = recivedData["data"]['uuid'] 
+        sessionStorage.setItem("uuid", uuid);
+        return;
+    }
+    if(!recivedData.data.msg)
+        return;
+    let d = new Date();
+    let res_time = `${d.getHours()}:${d.getMinutes()}`;
+    let html = document.getElementById("card-body").innerHTML;
+    html += createReciveMsg(recivedData.data.msg, res_time);
+    document.getElementById("card-body").innerHTML = html;
+    // document.getElementById("emotions").innerText = JSON.stringify(recivedData, null, 2)
+} 
+
 function send() {
     let d = new Date();
-    let send_time = `${d.getHours()}:${d.getMinutes()}`;
+    let send_time = `${d.getHours()}:${d.getMinutes()}`;    
+    let html = document.getElementById("card-body").innerHTML;
     let msg = document.getElementById("exampleFormControlInput3").value;
-    if (document.getElementById("greeting").innerText==="false")
-        checkGreet(msg);
     document.getElementById("exampleFormControlInput3").value = "";
-    fetch("http://localhost:8000/query", {
-        method: "post",
-        headers: {
-            "accept": "application/json",
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ "msg": msg, "isGreeted": false })
-
-    })
-        .then(res => res.json())
-        .then(res => {
-            d = new Date();
-            let res_time = `${d.getHours()}:${d.getMinutes()}`;
-            let html = document.getElementById("card-body").innerHTML;
-            html += createSendMsg(msg, send_time);
-            html += createReciveMsg(res.msg, res_time);
-            document.getElementById("card-body").innerHTML = html;
-            document.getElementById("emotions").innerText = JSON.stringify(res, null, 2)
-        })
-        .catch(e => { console.log(e); alert(e) });
+    html += createSendMsg(msg, send_time);
+    document.getElementById("card-body").innerHTML = html;
+    // if (document.getElementById("greeting").innerText === "false")
+    //     checkGreet(msg);
+    ws.send(JSON.stringify({ "msg": msg, "isGreeted": false }));
 }

@@ -57,10 +57,10 @@
       </div>
     </div>
   </section>
-  <div>
-    IsGreeted : <span id="greeting">false</span><br/>
-    emotions: <pre id="emotions"></pre>
-  </div>
+  <form method="post" action="http://localhost:8000/convert" enctype="multipart/form-data">
+    <input type="file" name="file">
+    <button type="submit">Submit</button>
+  </form>
 </body>
 
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/4.3.0/mdb.min.js"></script>
