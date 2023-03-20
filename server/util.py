@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from transformers import pipeline
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from pysentimiento import create_analyzer
@@ -28,30 +29,33 @@ checkQus_mock = (None, None)
 
 sentanceTransformer, emotion_analyzer, sentiment_analyzer, question_embeddings = None,None,None,None
 
-def load_models():
-    # TODO: load models async fashion
-    global sentanceTransformer, emotion_analyzer, sentiment_analyzer, question_embeddings
-
-    if sentanceTransformer!=None and emotion_analyzer!=None and sentiment_analyzer!=None and question_embeddings !=None:
-        return
-
-    print("loading Sentance Transformer: ")
+async def loadSentenceTransformer():
+    global sentanceTransformer
     sentanceTransformer = SentenceTransformer('bert-base-nli-mean-tokens')
-    print("Sentance Transformer Loaded: ")
-    print("loading emotional analyzer: ")
-    emotion_analyzer = create_analyzer(task="emotion", lang="en")
-    print("emotional analyzier loaded: ")
-    print("loading sentiment analyzer: ")
-    sentiment_analyzer = create_analyzer(task="sentiment", lang="en")
-    print("sentiment analyzer loaded: ")
 
-    print("loading embedings: ")
-    question_embeddings = sentanceTransformer.encode(qus)
-    # answer_embeddings = sentanceTransformer.encode(ans) # currently unused can be used to comapre answer
-    print("embeddings loaded: ")
+async def loadAnalyzer(type):
+    global emotion_analyzer, sentiment_analyzer
+    if type=="emotion":
+        emotion_analyzer = create_analyzer(task=type, lang="en")
+    elif type=="sentiment":
+        sentiment_analyzer = create_analyzer(task=type, lang="en")
+
+
+async def load_models():
+    global question_embeddings
+    task1 = await asyncio.gather(loadSentenceTransformer(),
+                                 asyncio.create_task(loadAnalyzer("emotion")),
+                                 asyncio.create_task(loadAnalyzer("sentiment")))
+    question_embeddings = sentanceTransformer.encode(qus)  
+    print(task1)
 
 if not DEBUG:
-    load_models()
+    try:
+        asyncio.get_running_loop()
+        with ThreadPoolExecutor(1) as pool:
+            result = pool.submit(lambda: asyncio.run(load_models())).result()
+    except RuntimeError:
+        result = asyncio.run(load_models())
 
 @useModel(DEBUG, analyizer_mock)
 def analyise(msg):
@@ -69,12 +73,12 @@ def checkQus(sentence):
         return qus[id], ans[id]
     return None, None
 
-@useModel(DEBUG, 0.0)
+@useModel(DEBUG, 0.369)
 def checkAns(sentence, expectedAnswer):
     sentence_embedding = sentanceTransformer.encode(sentence)
     expectedAnswer_embedding = sentanceTransformer.encode(expectedAnswer)
     similarity_score = cosine_similarity([sentence_embedding],[expectedAnswer_embedding])[0]
-    return str(similarity_score[0])
+    return similarity_score[0]
 
 
 class setInterval :
