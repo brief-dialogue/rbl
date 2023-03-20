@@ -2,8 +2,10 @@ import datetime
 import json
 import uuid
 from typing import List, Dict
+
+from pydantic import BaseModel
 from util import analyise, checkAns, checkQus, setInterval
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Body
 from fastapi.middleware.cors import CORSMiddleware
 import time
 import re
@@ -165,7 +167,11 @@ class Transcript:
                 "employee": self.eId,
                 "messages": self.messages}
     #TODO: Add analyzer here only
-        
+
+
+class Data(BaseModel):
+    answer: str
+    expectedAns: str        
 
 connectionManager = ConnectionManager()
 
@@ -229,6 +235,6 @@ async def transcript_processing(file: UploadFile = File(default="File to convert
     return transcript.json
 
 @app.post("/erc")
-async def expectedResponseChecker(answer, expectedAns):
-    similarity_score = checkAns(answer, expectedAns)
-    return {"score":similarity_score[0]} 
+async def expectedResponseChecker(Body:Data):
+    similarity_score = checkAns(Body.answer, Body.expectedAns)
+    return {"score":similarity_score} 
