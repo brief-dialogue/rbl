@@ -4,7 +4,7 @@ import uuid
 from typing import List, Dict
 
 from pydantic import BaseModel
-from util import analyise, checkAns, checkQus, setInterval
+from util import analyise, checkAns, checkQus, entityExtractor, keywordExtractor, wordEmotionAnalyzer, wordSentimentAnalyzer
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Body
 from fastapi.middleware.cors import CORSMiddleware
 import time
@@ -237,4 +237,25 @@ async def transcript_processing(file: UploadFile = File(default="File to convert
 @app.post("/erc")
 async def expectedResponseChecker(Body:Data):
     similarity_score = checkAns(Body.answer, Body.expectedAns)
-    return {"score":similarity_score} 
+    return {"score":str(similarity_score)} 
+
+
+@app.get("/test")
+def test():
+    msg = "Under the IBM Board Corporate Governance Guidelines, the Directors and Corporate Governance Committee and the full Board annually review the financial and other relationships between the independent directors and IBM as part of the assessment of director independence. The Directors and Corporate Governance Committee makes recommendations to the Board about the independence of non-management directors, and the Board determines whether those directors are independent. In addition to this annual assessment of director independence, independence is monitored by the Directors and Corporate Governance Committee and the full Board on an ongoing basis ."
+
+    analysis = analyise(msg)
+    keywords = keywordExtractor(msg)
+    entity = entityExtractor(msg)
+    keywordSentiment = wordSentimentAnalyzer(msg, keywords)
+    entitySentiment = wordSentimentAnalyzer(msg, [i[0] for i in entity])
+    keywordEmotion = wordEmotionAnalyzer(msg, keywords)
+    entityEmotion = wordEmotionAnalyzer(msg, [i[0] for i in entity])
+
+    analysis["keywordSentiment"]= keywordSentiment 
+    analysis["entitySentiment"]= entitySentiment
+    analysis["keywordEmotion"]= keywordEmotion
+    analysis["entityEmotion"]=entityEmotion
+
+    return analysis
+

@@ -10,10 +10,9 @@ import numpy as np
 import threading
 import time 
 import asyncio
+import spacy
 
 DEBUG = False
-
-
 
 def useModel(serveMockRes = False, MockRes:object = "" ):
     def decorator(func):
@@ -40,14 +39,14 @@ async def loadAnalyzer(type):
     elif type=="sentiment":
         sentiment_analyzer = create_analyzer(task=type, lang="en")
 
-
 async def load_models():
-    global question_embeddings
+    global question_embeddings, nlp
     task1 = await asyncio.gather(loadSentenceTransformer(),
                                  asyncio.create_task(loadAnalyzer("emotion")),
                                  asyncio.create_task(loadAnalyzer("sentiment")))
     question_embeddings = sentanceTransformer.encode(qus)  
     print(task1)
+    nlp=spacy.load('en_core_web_sm')
 
 if not DEBUG:
     try:
@@ -62,7 +61,7 @@ def analyise(msg):
     preprocessed_msg = preprocess_tweet(msg)
     emotion = emotion_analyzer.predict(preprocessed_msg)
     sentiment = sentiment_analyzer.predict(preprocessed_msg)
-    return {"output": emotion.output, "emotions": emotion, "sentiment": sentiment}
+    return {"output": emotion.output, "emotions": emotion.probas, "sentiment": sentiment.probas}
 
 @useModel(DEBUG, checkQus_mock)
 def checkQus(sentence):
@@ -79,6 +78,50 @@ def checkAns(sentence, expectedAnswer):
     expectedAnswer_embedding = sentanceTransformer.encode(expectedAnswer)
     similarity_score = cosine_similarity([sentence_embedding],[expectedAnswer_embedding])[0]
     return similarity_score[0]
+
+def entityExtractor(sentence):
+    doc = nlp(sentence)
+    return [(ent.text, ent.label_) for ent in doc.ents]
+
+def keywordExtractor(sentance):
+    keywords = set()
+    doc = nlp(sentance)
+    for token in doc:
+        if token.pos_ in ['PROPN', 'ADJ', 'NOUN']:
+            keywords.add(token.text)
+    return keywords
+
+def wordSentimentAnalyzer(doc, words):
+    wordsSentiment = {i:{"NEG":0,"NEU":0,"POS":0} for i in words}
+    for line in doc.split("."):
+        sentimentResult = sentiment_analyzer.predict(line) 
+        for word in wordsSentiment.keys():
+            if word in line:
+                for sentiment in wordsSentiment[word]: 
+                    try:
+                        wordsSentiment[word][sentiment] += sentimentResult.probas[sentiment]
+                    except Exception:
+                        print(sentiment, sentimentResult)
+
+    
+    for word in wordsSentiment.keys():
+        for sentiment in wordsSentiment[word]:
+            wordsSentiment[word][sentiment] /= len(doc.split("."))
+    return wordsSentiment
+
+def wordEmotionAnalyzer(doc, words):
+    wordsEmotion = {i:{"others":0,"joy":0,"sadness":0,"anger":0,"surprise":0,"disgust":0,"fear":0} for i in words}
+    for line in doc.split("."):
+        emotionResult = emotion_analyzer.predict(line)
+        for word in wordsEmotion.keys():
+            if word in line:
+                for emotion in wordsEmotion[word]:
+                    wordsEmotion[word][emotion] += emotionResult.probas[emotion]
+    
+    for word in wordsEmotion.keys():
+        for emotion in wordsEmotion[word]:
+            wordsEmotion[word][emotion] /= len(doc.split("."))
+    return wordsEmotion
 
 
 class setInterval :
