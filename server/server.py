@@ -4,7 +4,7 @@ import uuid
 from typing import List, Dict
 
 from pydantic import BaseModel
-from util import analyise, checkAns, checkQus, entityExtractor, keywordExtractor, wordEmotionAnalyzer, wordSentimentAnalyzer
+from server.util import analyise, checkAns, checkQus, entityExtractor, keywordExtractor, wordEmotionAnalyzer, wordSentimentAnalyzer
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Body
 from fastapi.middleware.cors import CORSMiddleware
 import time

@@ -3,7 +3,7 @@ from transformers import pipeline
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from pysentimiento import create_analyzer
 from pysentimiento.preprocessing import preprocess_tweet
-from costant import qus, ans
+from server.costant import qus, ans
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
@@ -12,7 +12,7 @@ import time
 import asyncio
 import spacy
 
-DEBUG = False
+DEBUG = True
 
 def useModel(serveMockRes = False, MockRes:object = "" ):
     def decorator(func):
